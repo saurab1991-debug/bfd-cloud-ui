@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BFD Generator</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+:root{
+  --navy:#0f2744; --blue:#1e5aa0; --accent:#2e9afe;
+  --light:#f0f7ff; --block:#b4c6e7; --green:#10b981;
+  --amber:#f59e0b; --red:#ef4444; --text:#1a2332;
+  --muted:#607080; --border:#d0e4f0; --card:#fff; --bg:#e8f0f8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:234px;
+  background:var(--navy);color:white;display:flex;flex-direction:column;z-index:100}
+.sb-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo h1{font-size:16px;font-weight:700}
+.sb-logo p{font-size:10px;opacity:.45;margin-top:3px;font-family:'IBM Plex Mono',monospace}
+.sb-nav{flex:1;overflow-y:auto;padding:10px 0}
+.nav-sec{padding:10px 20px 3px;font-size:9px;text-transform:uppercase;
+  letter-spacing:1.5px;opacity:.4;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 20px;font-size:13px;
+  cursor:pointer;transition:all .15s;border-left:3px solid transparent;opacity:.6}
+.nav-item:hover{opacity:1;background:rgba(255,255,255,.07)}
+.nav-item.active{opacity:1;border-color:var(--accent);background:rgba(46,154,254,.12);color:var(--accent)}
+.step-dot{width:21px;height:21px;border-radius:50%;background:rgba(255,255,255,.12);
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.nav-item.active .step-dot{background:var(--accent);color:white}
+.nav-item.done .step-dot{background:var(--green);color:white}
+
+.main{margin-left:234px;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:13px 30px;
+  display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
+.topbar h2{font-size:17px;font-weight:700;color:var(--navy)}
+.topbar .bc{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+
+.content{padding:28px 30px;flex:1}
+.page{display:none}
+.page.active{display:block}
+
+.card{background:var(--card);border-radius:11px;border:1px solid var(--border);
+  box-shadow:0 2px 10px rgba(0,0,0,.05);margin-bottom:22px}
+.card-hdr{padding:15px 20px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center}
+.card-hdr h3{font-size:14px;font-weight:700;color:var(--navy)}
+.card-hdr p{font-size:11px;color:var(--muted);margin-top:2px}
+.card-body{padding:20px}
+
+.form-row{display:grid;gap:14px;margin-bottom:14px}
+.cols-2{grid-template-columns:1fr 1fr}
+.cols-3{grid-template-columns:1fr 1fr 1fr}
+.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:10px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{
+  border:1.5px solid var(--border);border-radius:7px;padding:8px 11px;
+  font-size:13px;font-family:inherit;transition:border-color .2s;background:white}
+.form-group input:focus,.form-group select:focus{
+  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(46,154,254,.1)}
+.hint{font-size:10px;color:var(--muted);font-style:italic}
+
+.btn{padding:9px 20px;border-radius:7px;border:none;cursor:pointer;
+  font-size:13px;font-weight:600;font-family:inherit;transition:all .15s;
+  display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--accent);color:white}
+.btn-primary:hover{background:#1a8ae0;transform:translateY(-1px);box-shadow:0 4px 10px rgba(46,154,254,.3)}
+.btn-secondary{background:var(--light);color:var(--blue);border:1.5px solid var(--border)}
+.btn-secondary:hover{background:#dbeafe}
+.btn-danger{background:#fee2e2;color:var(--red);border:1.5px solid #fca5a5}
+.btn-sm{padding:5px 13px;font-size:12px}
+
+table.ctbl{width:100%;border-collapse:collapse;font-size:12px}
+table.ctbl th{background:var(--navy);color:white;padding:8px 9px;
+  text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+table.ctbl td{padding:6px 9px;border-bottom:1px solid var(--border);vertical-align:middle}
+table.ctbl tr:hover td{background:var(--light)}
+table.ctbl input,table.ctbl select{border:1px solid var(--border);border-radius:5px;
+  padding:4px 7px;font-size:12px;width:100%;min-width:65px}
+table.ctbl input:focus,table.ctbl select:focus{outline:none;border-color:var(--accent)}
+
+.op-list{display:flex;flex-direction:column;gap:10px}
+.op-item{border:1.5px solid var(--border);border-radius:9px;background:white;overflow:hidden}
+.op-item-hdr{background:var(--light);padding:11px 15px;
+  display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.op-item-hdr:hover{background:#dbeafe}
+.op-name{font-size:13px;font-weight:700;color:var(--navy)}
+.op-pill{padding:2px 9px;border-radius:9px;font-size:10px;font-weight:700;text-transform:uppercase}
+.op-body{padding:15px;border-top:1px solid var(--border)}
+
+.steps-list{display:flex;flex-direction:column;gap:5px;margin-bottom:7px}
+.step-row{display:flex;gap:7px;align-items:center}
+.step-row input{flex:1;padding:6px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px}
+.del-btn{background:#fee2e2;border:none;color:var(--red);padding:3px 7px;border-radius:4px;cursor:pointer}
+
+.sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:var(--muted);margin:14px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--border)}
+
+.info-box{background:var(--light);border:1.5px solid var(--accent);
+  border-radius:7px;padding:9px 13px;font-size:12px;color:var(--blue);margin-bottom:14px}
+.warn-box{background:#fff3cd;border:1.5px solid #ffc107;
+  border-radius:7px;padding:9px 13px;font-size:12px;color:#856404;margin:6px 0}
+
+.yield-row{display:flex;gap:18px;flex-wrap:wrap;align-items:center;
+  background:var(--light);border:2px solid var(--accent);border-radius:9px;
+  padding:14px 18px;margin-bottom:18px}
+.ys{text-align:center}
+.ys .val{font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.ys .lbl{font-size:10px;color:var(--muted);margin-top:2px}
+
+.stream-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:10px}
+.sc{border-radius:7px;padding:10px 13px;border:1.5px solid rgba(0,0,0,.1)}
+.sc .sid{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;margin-bottom:3px}
+.sc .sname{font-size:12px;font-weight:600;margin-bottom:4px}
+.sc .sqty{font-size:11px;color:var(--muted)}
+
+.diagram-frame{border:none;width:100%;min-height:800px;border-radius:9px;
+  box-shadow:0 4px 18px rgba(0,0,0,.1);background:white}
+
+.action-bar{display:flex;gap:10px;align-items:center;
+  padding:14px 0;border-top:1px solid var(--border);margin-top:18px}
+
+#toast{position:fixed;bottom:22px;right:22px;background:var(--navy);color:white;
+  padding:11px 18px;border-radius:9px;font-size:13px;display:none;z-index:999;
+  box-shadow:0 8px 22px rgba(0,0,0,.2)}
+#toast.show{display:block;animation:fadeUp .25s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sb-logo">
+    <h1>⚗️ BFD Generator</h1>
+    <p>Block Flow Diagram Tool</p>
+  </div>
+  <div class="sb-nav">
+    <div class="nav-sec">Setup</div>
+    <div class="nav-item active" onclick="goTo('p-project',this)"><div class="step-dot">1</div>Project Info</div>
+    <div class="nav-item" onclick="goTo('p-components',this)"><div class="step-dot">2</div>Components</div>
+    <div class="nav-sec">Operations</div>
+    <div class="nav-item" onclick="goTo('p-operations',this)"><div class="step-dot">3</div>Unit Operations</div>
+    <div class="nav-sec">Output</div>
+    <div class="nav-item" onclick="goTo('p-calculate',this)"><div class="step-dot">4</div>Calculate</div>
+    <div class="nav-item" onclick="goTo('p-diagram',this)"><div class="step-dot">5</div>BFD Diagram</div>
+    <div class="nav-item" onclick="goTo('p-export',this)"><div class="step-dot">6</div>Export</div>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <h2 id="pg-title">Project Setup</h2>
+      <div class="bc" id="pg-bc">Step 1 of 6</div>
+    </div>
+    <div style="display:flex;gap:9px">
+      <button class="btn btn-secondary btn-sm" onclick="loadExample()">📋 Load Example</button>
+      <button class="btn btn-primary btn-sm" onclick="saveDraft()">💾 Save Draft</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+  <!-- PAGE 1: PROJECT -->
+  <div class="page active" id="p-project">
+    <div class="card">
+      <div class="card-hdr"><div><h3>Project Information</h3><p>Basic details about this batch process</p></div></div>
+      <div class="card-body">
+        <div class="form-row cols-2">
+          <div class="form-group"><label>Product Name *</label>
+            <input type="text" id="product_name" placeholder="e.g. Compound A"/></div>
+          <div class="form-group"><label>Reference / Batch No.</label>
+            <input type="text" id="reference" placeholder="e.g. EXP-001"/></div>
+        </div>
+        <div class="form-row cols-3">
+          <div class="form-group"><label>Batch Size (kg SM) *</label>
+            <input type="number" id="batch_size" placeholder="500" step="0.01"/>
+            <span class="hint">Mass of Starting Material</span></div>
+          <div class="form-group"><label>Target Yield (%)</label>
+            <input type="number" id="target_yield" placeholder="85" min="0" max="100" step="0.1"/></div>
+          <div class="form-group"><label>Author</label>
+            <input type="text" id="author" placeholder="Name"/></div>
+        </div>
+        <div class="form-row cols-2">
+          <div class="form-group"><label>Route Description</label>
+            <textarea id="route_desc" rows="2" placeholder="Brief synthesis route description..."></textarea></div>
+          <div class="form-group"><label>Notes / Assumptions</label>
+            <textarea id="project_notes" rows="2" placeholder="Project-level assumptions..."></textarea></div>
+        </div>
+        <div class="action-bar">
+          <button class="btn btn-primary" onclick="goTo('p-components',null,true)">Next: Components →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 2: COMPONENTS -->
+  <div class="page" id="p-components">
+    <div class="card">
+      <div class="card-hdr">
+        <div><h3>Components / Raw Materials</h3>
+          <p>All components relative to SM. SM molar ratio = 1.00</p></div>
+        <button class="btn btn-primary btn-sm" onclick="addComponent()">+ Add Component</button>
+      </div>
+      <div class="card-body">
+        <div class="info-box">💡 <b>Molar Ratio</b> is relative to SM (= 1.00). All masses and volumes are calculated from molar ratios × SM batch size.</div>
+        <div style="overflow-x:auto">
+          <table class="ctbl" id="comp-table">
+            <thead><tr>
+              <th>#</th><th>Name *</th><th>CAS</th><th>MW (g/mol) *</th>
+              <th>Mol. Ratio *</th><th>Purity %</th><th>Density kg/m³</th>
+              <th>Role *</th><th>BP °C</th><th>MP °C</th><th></th>
+            </tr></thead>
+            <tbody id="comp-tbody"></tbody>
+          </table>
+        </div>
+        <div class="action-bar">
+          <button class="btn btn-secondary" onclick="goTo('p-project')">← Back</button>
+          <button class="btn btn-primary" onclick="goTo('p-operations',null,true)">Next: Operations →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 3: OPERATIONS -->
+  <div class="page" id="p-operations">
+    <div class="card">
+      <div class="card-hdr">
+        <div><h3>Unit Operations</h3><p>Add operations in process order. Each = one equipment block in the BFD.</p></div>
+        <div style="display:flex;gap:7px">
+          <select id="op-type-sel" style="padding:6px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:12px">
+            <option value="reaction">⚗️ Reaction</option>
+            <option value="distillation">🌡️ Distillation</option>
+            <option value="filtration">🔽 Filtration</option>
+            <option value="drying">💨 Drying</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="addOp()">+ Add Operation</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="op-list" class="op-list">
+          <div style="text-align:center;padding:36px;color:var(--muted);font-size:13px">
+            No operations yet. Add your first operation above.
+          </div>
+        </div>
+        <div class="action-bar">
+          <button class="btn btn-secondary" onclick="goTo('p-components')">← Back</button>
+          <button class="btn btn-primary" onclick="goTo('p-calculate',null,true)">Next: Calculate →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 4: CALCULATE -->
+  <div class="page" id="p-calculate">
+    <div class="card">
+      <div class="card-hdr">
+        <div><h3>Mass Balance Calculation</h3></div>
+        <button class="btn btn-primary" onclick="runCalc()">⚡ Run Calculation</button>
+      </div>
+      <div class="card-body">
+        <div id="calc-msg" class="info-box">Click "Run Calculation" to compute all stream quantities.</div>
+        <div id="calc-results"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 5: DIAGRAM -->
+  <div class="page" id="p-diagram">
+    <div class="card">
+      <div class="card-hdr">
+        <div><h3>BFD Diagram</h3></div>
+        <button class="btn btn-primary btn-sm" onclick="genDiagram()">🔄 Generate Diagram</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div id="diagram-wrap" style="padding:14px">
+          <div style="text-align:center;padding:50px;color:var(--muted)">Run calculation first, then click Generate Diagram.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 6: EXPORT -->
+  <div class="page" id="p-export">
+    <div class="card">
+      <div class="card-hdr"><div><h3>Export</h3></div></div>
+      <div class="card-body">
+        <div class="form-row cols-2">
+          <div style="border:2px solid var(--border);border-radius:10px;padding:22px;text-align:center">
+            <div style="font-size:34px;margin-bottom:10px">📊</div>
+            <h4 style="margin-bottom:6px">Excel BFD</h4>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+              BFD sheet (exact format) + Stream Summary + Waste Norms
+            </p>
+            <button class="btn btn-primary" onclick="exportExcel()">Download Excel (.xlsx)</button>
+            <div id="xl-link" style="margin-top:9px;font-size:12px"></div>
+          </div>
+          <div style="border:2px solid var(--border);border-radius:10px;padding:22px;text-align:center">
+            <div style="font-size:34px;margin-bottom:10px">🖼️</div>
+            <h4 style="margin-bottom:6px">BFD Diagram (HTML)</h4>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+              Visual block flow diagram — opens in browser, printable
+            </p>
+            <button class="btn btn-secondary" onclick="exportDiagram()">Download HTML</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────
+const S = { project:{}, components:[], operations:[], calcResult:null };
+let compCtr = 0, opCtr = 0;
+
+const PAGE_META = {
+  'p-project':    {t:'Project Setup',            bc:'Step 1 of 6'},
+  'p-components': {t:'Components / Raw Materials',bc:'Step 2 of 6'},
+  'p-operations': {t:'Unit Operations',           bc:'Step 3 of 6'},
+  'p-calculate':  {t:'Calculate & Review',        bc:'Step 4 of 6'},
+  'p-diagram':    {t:'BFD Diagram',               bc:'Step 5 of 6'},
+  'p-export':     {t:'Export',                    bc:'Step 6 of 6'},
+};
+const OP_COLORS = {reaction:'#dbeafe',distillation:'#fef9c3',filtration:'#fce7f3',drying:'#ffedd5'};
+const OP_TEXT   = {reaction:'#1e40af',distillation:'#854d0e',filtration:'#9d174d',drying:'#9a3412'};
+const OP_ICONS  = {reaction:'⚗️',distillation:'🌡️',filtration:'🔽',drying:'💨'};
+
+// ── Navigation ─────────────────────────────────────────────────────
+function goTo(pid, navEl, save) {
+  if (save) collectProject();
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(pid).classList.add('active');
+  const m = PAGE_META[pid]||{};
+  document.getElementById('pg-title').textContent = m.t||'';
+  document.getElementById('pg-bc').textContent   = m.bc||'';
+  if (navEl) navEl.classList.add('active');
+  else document.querySelectorAll('.nav-item').forEach(n=>{
+    if (n.getAttribute('onclick')?.includes(pid)) n.classList.add('active');
+  });
+  window.scrollTo(0,0);
+}
+
+function collectProject() {
+  S.project = {
+    product_name : v('product_name'),
+    reference    : v('reference'),
+    batch_size   : parseFloat(v('batch_size'))||0,
+    target_yield : parseFloat(v('target_yield'))||null,
+    author       : v('author'),
+    route_desc   : v('route_desc'),
+    notes        : v('project_notes'),
+  };
+}
+function v(id){ return (document.getElementById(id)||{}).value?.trim()||''; }
+
+// ── Components ─────────────────────────────────────────────────────
+function addComponent(d={}) {
+  compCtr++;
+  const id = compCtr;
+  const tbody = document.getElementById('comp-tbody');
+  const roles = ['SM','reagent','solvent','catalyst','product','byproduct'];
+  const opts  = roles.map(r=>`<option value="${r}" ${(d.role||'reagent')===r?'selected':''}>${r}</option>`).join('');
+  const tr = document.createElement('tr');
+  tr.id = `cr-${id}`; tr.dataset.id = id;
+  tr.innerHTML = `
+    <td style="color:var(--muted);font-size:11px">${id}</td>
+    <td><input type="text" value="${d.name||''}" placeholder="Component name" onchange="syncComp(${id})"></td>
+    <td><input type="text" value="${d.cas||''}"  placeholder="CAS No." onchange="syncComp(${id})"></td>
+    <td><input type="number" value="${d.mw||''}" placeholder="0.00" step="0.001" onchange="syncComp(${id})"></td>
+    <td><input type="number" value="${d.molar_ratio||1}" placeholder="1.00" step="0.001" onchange="syncComp(${id})"></td>
+    <td><input type="number" value="${d.purity||100}" min="0" max="100" step="0.1" onchange="syncComp(${id})"></td>
+    <td><input type="number" value="${d.density||''}" placeholder="1000" step="0.1" onchange="syncComp(${id})"></td>
+    <td><select onchange="syncComp(${id})">${opts}</select></td>
+    <td><input type="text" value="${d.bp||''}" placeholder="100" onchange="syncComp(${id})"></td>
+    <td><input type="text" value="${d.mp||''}" placeholder="0"   onchange="syncComp(${id})"></td>
+    <td><button class="btn btn-danger btn-sm" onclick="removeComp(${id})">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  syncComp(id, d);
+}
+function syncComp(id, ov={}) {
+  const row = document.getElementById(`cr-${id}`);
+  if (!row) return;
+  const inp = row.querySelectorAll('input,select');
+  const c = {
+    id,
+    name        : ov.name        || inp[0].value,
+    cas         : ov.cas         || inp[1].value,
+    mw          : parseFloat(ov.mw          || inp[2].value)||0,
+    molar_ratio : parseFloat(ov.molar_ratio || inp[3].value)||1,
+    purity      : parseFloat(ov.purity      || inp[4].value)||100,
+    density     : parseFloat(ov.density     || inp[5].value)||0,
+    role        : ov.role        || inp[6].value,
+    bp          : ov.bp          || inp[7].value,
+    mp          : ov.mp          || inp[8].value,
+  };
+  const i = S.components.findIndex(x=>x.id===id);
+  if (i>=0) S.components[i]=c; else S.components.push(c);
+}
+function removeComp(id) {
+  document.getElementById(`cr-${id}`)?.remove();
+  S.components = S.components.filter(c=>c.id!==id);
+}
+
+// ── Operations ─────────────────────────────────────────────────────
+function addOp() {
+  const type = document.getElementById('op-type-sel').value;
+  opCtr++;
+  const id = opCtr;
+  const cont = document.getElementById('op-list');
+  if (cont.querySelector('[style*="No operations"]')) cont.innerHTML='';
+  const div = document.createElement('div');
+  div.className='op-item'; div.id=`op-${id}`;
+  div.innerHTML=`
+    <div class="op-item-hdr" onclick="toggleOp(${id})">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span class="op-pill" style="background:${OP_COLORS[type]};color:${OP_TEXT[type]}">${OP_ICONS[type]} ${type.toUpperCase()}</span>
+        <span class="op-name" id="opname-${id}">${OP_ICONS[type]} ${type.charAt(0).toUpperCase()+type.slice(1)} ${id}</span>
+      </div>
+      <div style="display:flex;gap:7px">
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();removeOp(${id})">Remove</button>
+        <span id="opch-${id}" style="font-size:17px;color:var(--muted)">▾</span>
+      </div>
+    </div>
+    <div class="op-body" id="opbody-${id}">${buildOpForm(type,id)}</div>`;
+  cont.appendChild(div);
+  S.operations.push({id, type, name:`${type.charAt(0).toUpperCase()+type.slice(1)} ${id}`});
+}
+function toggleOp(id) {
+  const b=document.getElementById(`opbody-${id}`);
+  const c=document.getElementById(`opch-${id}`);
+  const hidden=b.style.display==='none';
+  b.style.display=hidden?'':'none'; c.textContent=hidden?'▾':'▸';
+}
+function removeOp(id) {
+  document.getElementById(`op-${id}`)?.remove();
+  S.operations=S.operations.filter(o=>o.id!==id);
+}
+
+function buildOpForm(type,id) {
+  const base=`
+    <div class="form-row cols-3">
+      <div class="form-group"><label>Operation Name</label>
+        <input type="text" id="opn-${id}" value="${type.charAt(0).toUpperCase()+type.slice(1)} ${id}" onchange="syncOp(${id})"></div>
+      <div class="form-group"><label>Initial Temp (°C)</label>
+        <input type="text" id="oti-${id}" placeholder="25" onchange="syncOp(${id})"></div>
+      <div class="form-group"><label>Final / Setpoint Temp (°C)</label>
+        <input type="text" id="otf-${id}" placeholder="80" onchange="syncOp(${id})"></div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="form-group"><label>Pressure</label>
+        <input type="text" id="opr-${id}" placeholder="atm" onchange="syncOp(${id})"></div>
+      <div class="form-group"><label>Equipment Tag</label>
+        <input type="text" id="otag-${id}" placeholder="R-01" onchange="syncOp(${id})"></div>
+      <div class="form-group"><label>Equipment MOC</label>
+        <input type="text" id="omoc-${id}" placeholder="SS-316L" onchange="syncOp(${id})"></div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group"><label>Equipment Volume (kL)</label>
+        <input type="number" id="ovol-${id}" placeholder="5" step="0.1" onchange="syncOp(${id})">
+        <span class="hint">Guardrail: warns if op. vol > 80% of this</span></div>
+    </div>`;
+
+  let spec='';
+  if (type==='reaction') spec=`
+    <div class="sec-title">Reaction Parameters</div>
+    <div class="form-row cols-3">
+      <div class="form-group"><label>Conversion (%)</label>
+        <input type="number" id="ocv-${id}" value="100" min="0" max="100" step="0.1" onchange="syncOp(${id})"></div>
+      <div class="form-group"><label>Selectivity to Product (%)</label>
+        <input type="number" id="osl-${id}" value="100" min="0" max="100" step="0.1" onchange="syncOp(${id})"></div>
+      <div class="form-group"><label>Hold Time (hrs)</label>
+        <input type="text" id="oht-${id}" placeholder="4" onchange="syncOp(${id})"></div>
+    </div>`;
+  else if (type==='distillation') spec=`
+    <div class="sec-title">Distillation Parameters</div>
+    <div class="form-row cols-2">
+      <div class="form-group"><label>Distillate Fraction (0–1)</label>
+        <input type="number" id="odf-${id}" value="0.95" min="0" max="1" step="0.01" onchange="syncOp(${id})">
+        <span class="hint">Fraction of solvent recovered as distillate</span></div>
+    </div>`;
+  else if (type==='filtration') spec=`
+    <div class="sec-title">Filtration Parameters</div>
+    <div class="form-row cols-3">
+      <div class="form-group"><label>Wet Cake LOD (%)</label>
+        <input type="number" id="olod-${id}" value="30" min="0" max="100" step="0.1" onchange="syncOp(${id})">
+        <span class="hint">Moisture content of wet cake</span></div>
+      <div class="form-group"><label>Wash Ratio (kg/kg product)</label>
+        <input type="number" id="owr-${id}" value="2" min="0" step="0.1" onchange="syncOp(${id})"></div>
+      <div class="form-group"><label>Product Loss to ML (%)</label>
+        <input type="number" id="opl-${id}" value="2" min="0" max="100" step="0.1" onchange="syncOp(${id})"></div>
+    </div>`;
+  else if (type==='drying') spec=`
+    <div class="sec-title">Drying Parameters</div>
+    <div class="form-row cols-3">
+      <div class="form-group"><label>Initial LOD (%)</label>
+        <input type="number" id="oli-${id}" value="30" min="0" max="100" step="0.1" onchange="syncOp(${id})"></div>
+      <div class="form-group"><label>Final LOD / Target (%)</label>
+        <input type="number" id="olf-${id}" value="0.5" min="0" max="100" step="0.01" onchange="syncOp(${id})"></div>
+      <div class="form-group"><label>Drying Temp (°C)</label>
+        <input type="text" id="odt-${id}" placeholder="60" onchange="syncOp(${id})"></div>
+    </div>`;
+
+  const stepsHtml=`
+    <div class="sec-title">Process Steps</div>
+    <div id="steps-${id}" class="steps-list"></div>
+    <button class="btn btn-secondary btn-sm" onclick="addStep(${id})">+ Add Step</button>`;
+  return base+spec+stepsHtml;
+}
+
+function addStep(oid) {
+  const cont=document.getElementById(`steps-${oid}`);
+  const idx=cont.children.length+1;
+  const row=document.createElement('div');
+  row.className='step-row';
+  row.innerHTML=`<span style="font-size:11px;color:var(--muted);min-width:18px">${idx}.</span>
+    <input type="text" placeholder="Step description..." onchange="syncOp(${oid})">
+    <button class="del-btn" onclick="this.parentElement.remove();syncOp(${oid})">✕</button>`;
+  cont.appendChild(row);
+}
+
+function g(sel){ const e=document.getElementById(sel); return e?e.value:''; }
+function syncOp(id) {
+  const steps=[];
+  document.querySelectorAll(`#steps-${id} .step-row input`).forEach(i=>{if(i.value) steps.push(i.value);});
+  const type=S.operations.find(o=>o.id===id)?.type||'reaction';
+  const op={id,type,name:g(`opn-${id}`),temp_initial:g(`oti-${id}`),
+    temp_final:g(`otf-${id}`),pressure:g(`opr-${id}`),
+    equipment:{tag:g(`otag-${id}`),moc:g(`omoc-${id}`),volume_kl:parseFloat(g(`ovol-${id}`))||0},steps};
+  if(type==='reaction'){op.conversion=parseFloat(g(`ocv-${id}`))||100;op.selectivity=parseFloat(g(`osl-${id}`))||100;op.hold_time=g(`oht-${id}`);}
+  else if(type==='distillation'){op.distillate_fraction=parseFloat(g(`odf-${id}`))||0.95;}
+  else if(type==='filtration'){op.lod=parseFloat(g(`olod-${id}`))||30;op.wash_ratio=parseFloat(g(`owr-${id}`))||2;op.product_loss=parseFloat(g(`opl-${id}`))||2;}
+  else if(type==='drying'){op.lod_initial=parseFloat(g(`oli-${id}`))||30;op.lod_final=parseFloat(g(`olf-${id}`))||0.5;}
+  const i=S.operations.findIndex(o=>o.id===id);
+  if(i>=0) S.operations[i]=op; else S.operations.push(op);
+  const ne=document.getElementById(`opname-${id}`);
+  if(ne&&op.name) ne.textContent=`${OP_ICONS[type]||''} ${op.name}`;
+}
+
+// ── Calculation ────────────────────────────────────────────────────
+async function runCalc() {
+  collectProject();
+  document.querySelectorAll('#comp-tbody tr').forEach(r=>{const id=parseInt(r.dataset.id);if(id)syncComp(id);});
+  S.operations.forEach(o=>syncOp(o.id));
+  const msg=document.getElementById('calc-msg');
+  msg.className='info-box'; msg.textContent='⏳ Calculating…';
+  try {
+    const res=await fetch('/api/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(S)});
+    const d=await res.json();
+    if(d.error) throw new Error(d.error);
+    S.calcResult=d;
+    renderCalc(d);
+    toast('✅ Calculation complete!');
+  } catch(e){
+    msg.className='warn-box'; msg.textContent='❌ '+e.message;
+  }
+}
+
+function renderCalc(d) {
+  const el=document.getElementById('calc-results');
+  const yld=d.yield||{};
+  const pct=parseFloat(yld.molar_yield_pct||0);
+  const col=pct>=85?'var(--green)':pct>=70?'var(--amber)':'var(--red)';
+  let html=`<div class="yield-row">
+    <div class="ys"><div class="val">${yld.sm_input_kg||'—'}</div><div class="lbl">SM Input (kg)</div></div>
+    <div style="font-size:22px;color:var(--accent)">→</div>
+    <div class="ys"><div class="val">${yld.product_output_kg||'—'}</div><div class="lbl">Product (kg)</div></div>
+    <div style="font-size:22px;color:var(--accent)">→</div>
+    <div class="ys"><div class="val" style="color:${col}">${yld.molar_yield_pct||'—'}%</div><div class="lbl">Molar Yield</div></div>
+  </div>`;
+
+  html+=`<div class="sec-title">Component Quantities</div>
+  <table class="ctbl" style="margin-bottom:18px">
+    <thead><tr><th>Component</th><th>Role</th><th>MW</th><th>Mol. Ratio</th>
+    <th>Moles (kmol)</th><th>Mass (kg)</th><th>Vol (kL)</th></tr></thead><tbody>`;
+  (d.components||[]).forEach(c=>{
+    html+=`<tr><td><b>${c.name}</b></td><td>${c.role}</td><td>${c.mw}</td>
+    <td>${c.molar_ratio}</td><td>${c.moles}</td><td><b>${c.mass_kg}</b></td><td>${c.volume_kl}</td></tr>`;
+  });
+  html+='</tbody></table>';
+
+  html+=`<div class="sec-title">Operation Stream Results</div>`;
+  (d.operations||[]).forEach(op=>{
+    html+=`<div style="margin-bottom:18px">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:7px">${OP_ICONS[op.type]||''} ${op.name}</div>`;
+    if(op.volume_warning) html+=`<div class="warn-box">${op.volume_warning}</div>`;
+    html+='<div class="stream-grid">';
+    op.inlet_streams?.forEach(s=>{ html+=sCard(s,'#eff6ff','#bfdbfe','Inlet'); });
+    op.outlet_streams?.forEach(s=>{
+      const cm={gas_waste:['#dbeafe','#93c5fd'],organic_waste:['#fef9c3','#fde047'],
+                aqueous_waste:['#fce7f3','#f9a8d4'],solid_waste:['#ffedd5','#fdba74']};
+      const [bg,bd]=(cm[s.category])||['#fef9c3','#fde047'];
+      html+=sCard(s,bg,bd,s.category?.replace('_',' ')||'Waste');
+    });
+    if(op.process_stream){
+      const ps=op.process_stream;
+      let cr='';(ps.composition||[]).forEach(c=>{cr+=`<tr><td>${c.component}</td><td>${c.qty_kg} kg</td><td>${c.wt_pct||'—'}%</td></tr>`;});
+      html+=`<div class="sc" style="background:#e2efda;border-color:#5cb85c;grid-column:1/-1">
+        <div class="sid">${ps.id} — Process Stream</div>
+        <div class="sname">${ps.name}</div>
+        <div class="sqty">${ps.qty_kg} kg · ${ps.vol_kl} kL</div>
+        ${cr?`<table style="width:100%;font-size:11px;margin-top:6px"><thead><tr><th style="text-align:left">Component</th><th>Qty (kg)</th><th>wt%</th></tr></thead><tbody>${cr}</tbody></table>`:''}
+      </div>`;
+    }
+    html+='</div></div>';
+  });
+  document.getElementById('calc-msg').className='info-box';
+  document.getElementById('calc-msg').textContent='✅ Calculation complete.';
+  el.innerHTML=html;
+}
+function sCard(s,bg,bd,lbl){
+  return `<div class="sc" style="background:${bg};border-color:${bd}">
+    <div class="sid">${s.id} · ${lbl}</div>
+    <div class="sname">${s.component}</div>
+    <div class="sqty">${s.qty_kg} kg · ${s.vol_kl} kL</div>
+  </div>`;
+}
+
+// ── Diagram ────────────────────────────────────────────────────────
+async function genDiagram() {
+  if(!S.calcResult){toast('Run calculation first!');return;}
+  try {
+    const res=await fetch('/api/diagram',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({project:S.project,operations:S.operations,calc:S.calcResult})});
+    const d=await res.json();
+    if(d.error) throw new Error(d.error);
+    const wrap=document.getElementById('diagram-wrap');
+    wrap.innerHTML='';
+    const iframe=document.createElement('iframe');
+    iframe.className='diagram-frame';
+    wrap.appendChild(iframe);
+    iframe.contentDocument.open();
+    iframe.contentDocument.write(d.html);
+    iframe.contentDocument.close();
+    setTimeout(()=>{ iframe.style.height=(iframe.contentDocument.body.scrollHeight+40)+'px'; },600);
+    toast('✅ Diagram ready!');
+  } catch(e){toast('❌ '+e.message);}
+}
+
+// ── Export ─────────────────────────────────────────────────────────
+async function exportExcel() {
+  if(!S.calcResult){toast('Run calculation first!');return;}
+  try {
+    const res=await fetch('/api/export_excel',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({project:S.project,components:S.components,operations:S.operations,calc:S.calcResult})});
+    const d=await res.json();
+    if(d.error) throw new Error(d.error);
+    document.getElementById('xl-link').innerHTML=`<a href="${d.url}" style="color:var(--accent);font-weight:600">⬇ ${d.filename}</a>`;
+    const a=document.createElement('a');a.href=d.url;a.download=d.filename;a.click();
+    toast('✅ Excel downloaded!');
+  } catch(e){toast('❌ '+e.message);}
+}
+function exportDiagram() {
+  if(!S.calcResult){toast('Run calculation first!');return;}
+  fetch('/api/diagram',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({project:S.project,operations:S.operations,calc:S.calcResult})})
+  .then(r=>r.json()).then(d=>{
+    if(d.error) throw new Error(d.error);
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([d.html],{type:'text/html'}));
+    a.download=`BFD_${(S.project.product_name||'diagram').replace(/\s+/g,'_')}.html`;
+    a.click(); toast('✅ HTML downloaded!');
+  }).catch(e=>toast('❌ '+e.message));
+}
+
+// ── Utilities ──────────────────────────────────────────────────────
+function toast(msg,ms=3000){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),ms);
+}
+function saveDraft(){
+  collectProject();
+  document.querySelectorAll('#comp-tbody tr').forEach(r=>{const id=parseInt(r.dataset.id);if(id)syncComp(id);});
+  S.operations.forEach(o=>syncOp(o.id));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));
+  a.download=`BFD_draft_${(S.project.product_name||'project').replace(/\s+/g,'_')}.json`;
+  a.click(); toast('💾 Draft saved!');
+}
+
+// ── Generic Example (no real product names) ────────────────────────
+function loadExample() {
+  document.getElementById('product_name').value = 'Compound A';
+  document.getElementById('reference').value    = 'LAB-2024-001';
+  document.getElementById('batch_size').value   = '500';
+  document.getElementById('target_yield').value = '85';
+  document.getElementById('author').value       = 'Process Chemistry';
+  document.getElementById('route_desc').value   = '2-step synthesis via condensation and cyclisation';
+  collectProject();
+
+  document.getElementById('comp-tbody').innerHTML='';
+  S.components=[]; compCtr=0;
+  const comps=[
+    {name:'Starting Material A', cas:'',       mw:154,   molar_ratio:1,    purity:99,   density:1040, role:'SM',         bp:255,  mp:69},
+    {name:'Reagent B',           cas:'',       mw:137,   molar_ratio:1.2,  purity:99,   density:2480, role:'reagent',    bp:76,   mp:-112},
+    {name:'Solvent C',           cas:'',       mw:112,   molar_ratio:5,    purity:99.5, density:1110, role:'solvent',    bp:132,  mp:-45},
+    {name:'By-product Gas',      cas:'',       mw:36,    molar_ratio:2,    purity:100,  density:1.2,  role:'byproduct',  bp:-85,  mp:-114},
+    {name:'Product A',           cas:'',       mw:1035,  molar_ratio:0.5,  purity:99,   density:500,  role:'product',    bp:400,  mp:95},
+  ];
+  comps.forEach(c=>addComponent(c));
+
+  document.getElementById('op-list').innerHTML='';
+  S.operations=[]; opCtr=0;
+
+  document.getElementById('op-type-sel').value='reaction'; addOp();
+  setTimeout(()=>{
+    const rid=1;
+    document.getElementById(`opn-${rid}`).value   = 'Step-1 Reaction';
+    document.getElementById(`oti-${rid}`).value   = '25';
+    document.getElementById(`otf-${rid}`).value   = '80';
+    document.getElementById(`opr-${rid}`).value   = 'atm';
+    document.getElementById(`otag-${rid}`).value  = 'R-01';
+    document.getElementById(`omoc-${rid}`).value  = 'SS-316L';
+    document.getElementById(`ovol-${rid}`).value  = '5';
+    document.getElementById(`ocv-${rid}`).value   = '100';
+    document.getElementById(`osl-${rid}`).value   = '100';
+    document.getElementById(`oht-${rid}`).value   = '7';
+    const rs=['Perform Inertization Cycles','Charge Reaction Solvent at RT',
+              'Charge Starting Material','Charge Reagent',
+              'Adjust mass to reaction temperature',
+              'Maintain reaction mass for hold time',
+              'Adjust mass to filtration temperature',
+              'Transfer mass for Filtration'];
+    rs.forEach(_=>addStep(rid));
+    document.querySelectorAll(`#steps-${rid} .step-row input`).forEach((inp,i)=>{inp.value=rs[i]||'';});
+    syncOp(rid);
+
+    document.getElementById('op-type-sel').value='filtration'; addOp();
+    const fid=2;
+    document.getElementById(`opn-${fid}`).value  = 'Filtration';
+    document.getElementById(`otag-${fid}`).value = 'ANFD-01';
+    document.getElementById(`omoc-${fid}`).value = 'SS-316L';
+    document.getElementById(`ovol-${fid}`).value = '16';
+    document.getElementById(`otf-${fid}`).value  = '25';
+    document.getElementById(`olod-${fid}`).value = '30';
+    document.getElementById(`owr-${fid}`).value  = '2';
+    document.getElementById(`opl-${fid}`).value  = '2';
+    const fs=['Perform Inertization Cycles','Receive reaction mass',
+              'Filter and expel Mother Liquor','Wash cake with Wash Solvent',
+              'Apply N₂ pressure and expel Mother Liquor','Dry cake with Nitrogen'];
+    fs.forEach(_=>addStep(fid));
+    document.querySelectorAll(`#steps-${fid} .step-row input`).forEach((inp,i)=>{inp.value=fs[i]||'';});
+    syncOp(fid);
+
+    document.getElementById('op-type-sel').value='drying'; addOp();
+    const did=3;
+    document.getElementById(`opn-${did}`).value  = 'Drying';
+    document.getElementById(`otag-${did}`).value = 'D-01';
+    document.getElementById(`omoc-${did}`).value = 'SS-316L';
+    document.getElementById(`otf-${did}`).value  = '60';
+    document.getElementById(`oli-${did}`).value  = '30';
+    document.getElementById(`olf-${did}`).value  = '0.5';
+    const ds=['Inertize dryer','Receive wet cake',
+              'Dry under vacuum at set temperature',
+              'Sample for LOD/Residual solvents',
+              'Break vacuum and unload'];
+    ds.forEach(_=>addStep(did));
+    document.querySelectorAll(`#steps-${did} .step-row input`).forEach((inp,i)=>{inp.value=ds[i]||'';});
+    syncOp(did);
+
+    toast('📋 Example loaded — click Calculate to run!');
+  },100);
+}
+</script>
+</body>
+</html>
